@@ -32,7 +32,7 @@ hostname = "0.0.0.0"
 max_clients = 10
 attr_result = ""
 token_id = ""
-log = Logger.Logger("all.log", level="debug")
+log = Logger.Logger("gateway", level="debug")
 
 
 # Func: upload data to thingsboard by http post
@@ -42,7 +42,7 @@ log = Logger.Logger("all.log", level="debug")
 def upload_data(attr, token):
     try:
         # params = urllib.parse.urlencode(attr)
-        print("try to upload data ")
+        # print("try to upload data ")
         str_url = "/v1/networks/iotinabox/uplink"
 #        str_url = "/1r4zpn51"
         # len_attr = len(attr)
@@ -63,7 +63,7 @@ def upload_data(attr, token):
         conn.request("POST", str_url, body_str, headers)
 
         r1 = conn.getresponse()
-        print("response is ", str(r1.getcode()))
+        # print("response is ", str(r1.getcode()))
         log.logger.debug("upload_data: response is " + str(r1.getcode()))
         # 关闭连接
         conn.close()
@@ -118,6 +118,12 @@ def handle_client(client, address):
             # print(request_data)
         str_subreq = str(request_str[find_result1:])
         data_type = str_subreq[4:6]
+        log.logger.debug(" packet length %d", len(request_str))
+        # if packet is too long close it
+        if len(request_str) > 96:
+          log.logger.debug("packet length is longer than 96, closing socket")
+          client.close()
+          return 0
         log.logger.debug("packet is %s, data_type is DF%s0", str_subreq, data_type)
         sys.stdout.buffer.write(request_bytes)
         # parse and upload
@@ -136,7 +142,7 @@ def handle_client(client, address):
         # for other data_type, there are several module sensors, use different listening port to recognize them.
         elif data_type == "01":
             attr_result, token_id = df702.DF702.parse_data_DF702(str_subreq.strip().upper())
-        print("attr is"+attr_result+".token_id is "+token_id)
+        # print("attr is"+attr_result+".token_id is "+token_id)
         log.logger.debug("attr is"+attr_result+".token_id is "+token_id)
         if attr_result != "" and token_id != "":
             upload_data(attr_result, token_id)
